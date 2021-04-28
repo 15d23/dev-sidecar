@@ -191,14 +191,18 @@ const intercepts = {
 如果是mac系统，可能是下面的原因
 
 #### Mac系统使用时，首页的系统代理开关无法打开
-出现这个问题可能是没有开启系统代理命令的执行权限    
-请按照如下步骤确认和修复
+出现这个问题可能是没有开启系统代理命令的执行权限   
 ```
 networksetup -setwebproxy 'WiFi' 127.0.0.1 1181 
 #看是否有如下错误提示
 ** Error: Command requires admin privileges.
 ```
-如果有上面的错误提示，可能是由于安装了xcode，但未授权导致     
+如果有上面的错误提示，请尝试如下两种方法：
+
+1、 取消访问偏好设置需要管理员密码
+系统偏好设置—>安全性与隐私—> 通用—> 高级—> 访问系统范围的偏好设置需要输入管理员密码（取消勾选）
+
+2、 可能是由于安装了xcode，但未授权导致
 请在终端输入如下命令进行授权
 ```
 sudo xcodebuild -license
@@ -214,9 +218,15 @@ sudo xcodebuild -license
 请务必确认你访问的地址是https开头的
 比如： https://github.com/
 
-2. 请确认浏览器的代理设置为使用IE代理/或者使用系统代理状态
+2. 检查浏览器是否装了什么插件，与ds有冲突
+   
+3. 检查是否安装了其他代理软件，与ds有冲突
+   
+4. 请确认浏览器的代理设置为使用IE代理/或者使用系统代理状态
 
-3. 请确认网络代理设置处于勾选状态    
+6. 可以尝试换个浏览器试试
+
+7. 请确认网络代理设置处于勾选状态    
 正常情况下dev-sidecar在“系统代理”开关打开时，会自动设置代理。
 
  如何打开查看windows代理设置：    
@@ -228,6 +238,8 @@ windows 代理查看
 
 mac 代理查看     
 ![](./doc/mac-proxy.png)
+
+
 
 
 
@@ -245,15 +257,56 @@ mac 代理查看
 4、勾选信任由此证书颁发机构来标识网站，确定即可      
 
 ### 4. 打开github显示连接超时
-请右键退出dev-sidecar    
-然后浏览器访问： https://gh.docmirror.top/     
-看是否能打开，且显示403 forbidden错误   
+  ```html
+DevSidecar Warning:
+Error: www.github.com:443, 代理请求超时
+```
+如果是安全模式，则是因为不稳定导致的，等一会再刷新试试     
+如果是默认模式/增强模式，则是由于访问人数过多，正常现象
 
 ### 5、查看日志是否有报错
  如果还是不行，请在下方加作者好友，将服务日志发送给作者进行分析             
  日志打开方式：加速服务->右边日志按钮->打开日志文件夹    
 
-![](./doc/log.png)      
+![](./doc/log.png)   
+
+
+### 6、某些原本可以打开的网站打不开了
+1、可以尝试关闭pac    
+2、可以将域名加入白名单，设置方式参考：https://github.com/docmirror/dev-sidecar/issues/25
+
+### 7、 git push报错
+当git push的数据大于200k时，会报错，目前的方案不太好解决。     
+临时方案：切到安全模式，尝试git push，多试几次就可以了。
+
+
+## 贡献代码
+
+### 开发调试模式启动
+
+运行如下命令即可开发模式启动
+```shell
+git clone https://github.com/docmirror/dev-sidecar
+
+cd dev-sidecar 
+
+npm install lerna -g
+lerna bootstrap
+
+cd packages/gui
+
+npm run electron
+
+```
+
+### 打包成可执行文件
+```shell
+cd packages/gui
+npm run electron:build
+```
+
+### 提交pr
+如果你想将你的修改贡献出来，请提交pr
 
 
 ## 联系作者
