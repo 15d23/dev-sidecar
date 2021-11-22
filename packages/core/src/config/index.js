@@ -14,16 +14,24 @@ module.exports = {
     mode: 'default',
     autoStart: {
       enabled: false
+    },
+    remoteConfig: {
+      enabled: true,
+      url: 'https://gitee.com/docmirror/dev-sidecar/raw/master/packages/core/src/config/remote_config.json5'
+    },
+    dock: {
+      hideWhenWinClose: false
     }
   },
   server: {
     enabled: true,
-    port: 1181,
+    port: 31181,
     setting: {
       NODE_TLS_REJECT_UNAUTHORIZED: true,
+      verifySsl: true,
       script: {
         enabled: true,
-        defaultDir: '../../../scripts/'
+        defaultDir: './extra/scripts/'
       },
       userBasePath: getUserBasePath(),
       rootCaFile: {
@@ -43,22 +51,63 @@ module.exports = {
         '/.*/.*/archive/': {
           redirect: 'download.fastgit.org'
         },
-
         '/.*/.*/blame/': {
           redirect: 'hub.fastgit.org'
         },
         '^/[^/]+/[^/]+(/releases(/.*)?)?$': {
           script: [
-            'jquery',
             'github'
           ],
           desc: 'clone加速复制链接脚本'
         },
         '/.*': {
-          proxy: 'gh.docmirror.top/_proxy',
+          proxy: 'github.com',
+          // proxy: 'gh.docmirror.top/_proxy',
+          desc: '目前禁掉sni就可以直接访问，如果后续github.com的ip被封锁，只能再走proxy模式',
+          sni: 'baidu.com'
+        }
+        // '/.*/.*/raw11/': {
+        //   replace: '(.+)\\/raw\\/(.+)',
+        //   proxy: 'raw.fastgit.org$1/$2',
+        //   sni: 'baidu.com'
+        // }
+      },
+      'github-releases.githubusercontent.com': {
+        '.*': {
+          proxy: 'github-releases.githubusercontent.com',
+          sni: 'baidu.com'
+        }
+      },
+      'github.githubassets.com': {
+        '.*': {
+          proxy: 'github.githubassets.com',
           backup: [
-            'github.com'
-          ]
+            'assets.fastgit.org'
+          ],
+          sni: 'assets.fastgit.org'
+        }
+      },
+      'customer-stories-feed.github.com': {
+        '.*': { proxy: 'customer-stories-feed.fastgit.org' }
+      },
+
+      'raw.githubusercontent.com': {
+        '.*': {
+          proxy: 'raw.githubusercontent.com',
+          sni: 'baidu.com'
+        }
+        // '.*': { proxy: 'raw.fastgit.org' }
+      },
+      'user-images.githubusercontent.com': {
+        '.*': {
+          proxy: 'user-images.githubusercontent.com',
+          sni: 'baidu.com'
+        }
+      },
+      'avatars.githubusercontent.com': {
+        '.*': {
+          proxy: 'avatars.githubusercontent.com',
+          sni: 'baidu.com'
         }
       },
       'api.github.com': {
@@ -67,41 +116,31 @@ module.exports = {
           desc: 'github的访问速度分析上传，没有必要，直接返回成功'
         }
       },
-      '/.*/.*/raw11/': {
-        replace: '(.+)\\/raw\\/(.+)',
-        proxy: 'raw.fastgit.org$1/$2'
-      },
-      'raw.11githubusercontent.com': {
-        '.*': { proxy: 'raw.fastgit.org' }
-      },
-      // 'github.githubassets.com': {
+      // 'v2ex.com': {
       //   '.*': {
-      //     proxy: 'assets-gh.docmirror.top/_proxy',
-      //     test: 'https://github.githubassets.com/favicons/favicon.svg',
-      //     desc: '静态资源加速'
+      //     proxy: 'v2ex.com',
+      //     sni: 'baidu.com'
       //   }
       // },
-      'customer-stories-feed.github.com': {
-        '.*': { proxy: 'customer-stories-feed.fastgit.org' }
-      },
       // google cdn
       'www.google.com': {
         '/recaptcha/.*': { proxy: 'www.recaptcha.net' }
-      //   '.*': {
-      //     proxy: 'gg.docmirror.top/_yxorp',
-      //     desc: '呀，被你发现了，偷偷的用，别声张'
-      //   }
+        // '.*': {
+        //   proxy: 'gg.docmirror.top/_yxorp',
+        //   desc: '呀，被你发现了，偷偷的用，别声张'
+        // }
       },
       'ajax.googleapis.com': {
         '.*': {
-          proxy: 'ajax.loli.net',
+          proxy: 'ajax.lug.ustc.edu.cn',
+          backup: ['gapis.geekzu.org'],
           test: 'ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js'
         }
       },
       'fonts.googleapis.com': {
         '.*': {
-          proxy: 'fonts.loli.net',
-          backup: ['fonts.proxy.ustclug.org'],
+          proxy: 'fonts.geekzu.org',
+          backup: ['fonts.loli.net'],
           test: 'https://fonts.googleapis.com/css?family=Oswald'
         }
       },
@@ -124,7 +163,7 @@ module.exports = {
       'www.googleapis.com': { '.*': { abort: false, desc: '设置abort：true可以快速失败，节省时间' } },
       'lh*.googleusercontent.com': { '.*': { abort: false, desc: '设置abort：true可以快速失败，节省时间' } },
       // mapbox-node-binary.s3.amazonaws.com/sqlite3/v5.0.0/napi-v3-win32-x64.tar.gz
-      '*.s3.amazonaws.com': {
+      '*.s3.1amazonaws1.com': {
         '/sqlite3/.*': {
           redirect: 'npm.taobao.org/mirrors'
         }
@@ -149,11 +188,18 @@ module.exports = {
       }
     },
     whiteList: {
+      'apple.com': true,
+      '*.apple.com': true,
+      'microsoft.com': true,
+      '*.microsoft.com': true,
       'alipay.com': true,
       '*.alipay.com': true,
       'pay.weixin.qq.com': true,
       'www.baidu.com': true
     },
+    // sniList: {
+    //   'github.com': 'abaidu.com'
+    // },
     dns: {
       providers: {
         aliyun: {
@@ -161,11 +207,6 @@ module.exports = {
           server: 'https://dns.alidns.com/dns-query',
           cacheSize: 1000
         },
-        // ipaddress: {
-        //   type: 'ipaddress',
-        //   server: 'ipaddress',
-        //   cacheSize: 1000
-        // },
         usa: {
           type: 'https',
           server: 'https://1.1.1.1/dns-query',
@@ -181,31 +222,27 @@ module.exports = {
           server: 'https://rubyfish.cn/dns-query',
           cacheSize: 1000
         }
-        // google: {
-        //   type: 'https',
-        //   server: 'https://8.8.8.8/dns-query',
-        //   cacheSize: 1000
-        // },
-        // dnsSB: {
-        //   type: 'https',
-        //   server: 'https://doh.dns.sb/dns-query',
-        //   cacheSize: 1000
-        // }
       },
       mapping: {
         // 'assets.fastgit.org': 'usa',
+        '*.electronjs.org': 'quad9',
+        '*amazonaws.com': 'quad9',
         '*githubusercontent.com': 'quad9',
-        '*yarnpkg.com': 'usa',
-        '*cloudfront.net': 'usa',
-        '*github.io': 'usa',
-        'img.shields.io': 'usa',
-        '*.githubusercontent.com': 'usa',
-        '*.githubassets.com': 'usa',
+        '*yarnpkg.com': 'quad9',
+        '*cloudfront.net': 'quad9',
+        '*cloudflare.com': 'quad9',
+        '*github.io': 'quad9',
+        'img.shields.io': 'quad9',
+        '*.githubusercontent.com': 'quad9',
+        '*.githubassets.com': 'quad9',
         // "解决push的时候需要输入密码的问题",
         'github.com': 'quad9',
-        '*github.com': 'usa',
-        '*.vuepress.vuejs.org': 'usa',
-        'gh.docmirror.top': 'aliyun'
+        '*github.com': 'quad9',
+        '*.vuepress.vuejs.org': 'quad9',
+        'gh.docmirror.top': 'quad9',
+        '*v2ex.com': 'quad9',
+        '*pypi.org': 'quad9',
+        '*jetbrains.com': 'quad9'
       },
       speedTest: {
         enabled: true,

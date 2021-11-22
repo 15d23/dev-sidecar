@@ -21,7 +21,8 @@ module.exports = {
     middlewares = [],
     externalProxy,
     dnsConfig,
-    setting
+    setting,
+    sniConfig
   }, callback) {
     // Don't reject unauthorized
     // process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
@@ -38,25 +39,6 @@ module.exports = {
       log.info(`CA Cert saved in: ${caCertPath}`)
       log.info(`CA private key saved in: ${caKeyPath}`)
     }
-
-    // function lookup (hostname, options, callback) {
-    //   const dns = DnsUtil.hasDnsLookup(dnsConfig, hostname)
-    //   if (dns) {
-    //     dns.lookup(hostname).then(ip => {
-    //       // isDnsIntercept = { dns, hostname, ip }
-    //       if (ip !== hostname) {
-    //         log.info(`-----${hostname} use ip:${ip}-----`)
-    //         callback(null, ip, 4)
-    //       } else {
-    //         defaultDns.lookup(hostname, options, callback)
-    //       }
-    //     })
-    //   } else {
-    //     defaultDns.lookup(hostname, options, callback)
-    //   }
-    // }
-    //
-    // https.globalAgent.lookup = lookup
 
     port = ~~port
 
@@ -95,11 +77,12 @@ module.exports = {
       sslConnectInterceptor,
       middlewares,
       fakeServersCenter,
-      dnsConfig
+      dnsConfig,
+      sniConfig
     )
 
     const server = new http.Server()
-    server.listen(port, () => {
+    server.listen(port, '127.0.0.1', () => {
       log.info(`dev-sidecar启动端口: ${port}`)
       server.on('error', (e) => {
         log.error('server error', e)
@@ -128,6 +111,7 @@ module.exports = {
         callback(server)
       }
     })
+
     return server
   },
   createCA (caPaths) {

@@ -6,7 +6,6 @@ const DnsUtil = require('../../dns/index')
 const log = require('../../../utils/util.log')
 const RequestCounter = require('../../choice/RequestCounter')
 const InsertScriptMiddleware = require('../middleware/InsertScriptMiddleware')
-const OverWallMiddleware = require('../middleware/overwall')
 const speedTest = require('../../speed/index.js')
 const defaultDns = require('dns')
 const MAX_SLOW_TIME = 8000 // 超过此时间 则认为太慢了
@@ -17,6 +16,9 @@ module.exports = function createRequestHandler (createIntercepts, middlewares, e
     let proxyReq
 
     const rOptions = commonUtil.getOptionsFormRequest(req, ssl, externalProxy)
+
+    rOptions.agent.options.rejectUnauthorized = setting.verifySsl
+
     if (rOptions.headers.connection === 'close') {
       req.socket.setKeepAlive(false)
     } else if (rOptions.customSocketId != null) { // for NTLM
@@ -54,7 +56,7 @@ module.exports = function createRequestHandler (createIntercepts, middlewares, e
               if (!reqIncpt.requestIntercept) {
                 continue
               }
-              const goNext = reqIncpt.requestIntercept(context, req, res, ssl, next)
+              const goNext = reqIncpt.requestIntercept(context, req, res, ssl)
               if (goNext) {
                 next()
                 return
@@ -276,7 +278,10 @@ module.exports = function createRequestHandler (createIntercepts, middlewares, e
       if (!res.writableEnded) {
         const status = e.status || 500
         res.writeHead(status, { 'Content-Type': 'text/html;charset=UTF8' })
-        res.write(`DevSidecar Warning:<br/> ${e.toString()}`)
+        res.write(`DevSidecar Error:<br/>
+目标网站请求错误：【${e.code}】 ${e.message}<br/>
+目标地址：${rOptions.protocol}//${rOptions.hostname}:${rOptions.port}${rOptions.path}`
+        )
         res.end()
         log.error('request error', e.message)
       }

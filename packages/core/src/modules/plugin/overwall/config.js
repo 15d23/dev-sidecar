@@ -10,14 +10,15 @@ module.exports = {
     }
   },
   targets: {
-    '*facebook.com': true,
     'github.com': true,
-    '*wikimedia.org': true
+    '*wikimedia.org': true,
+    'v2ex.com': true
   },
   pac: {
     enabled: true,
-    update: [
-      'https://gitlab.com/gfwlist/gfwlist/raw/master/gfwlist.txt'
-    ]
+    // update: [
+    //   'https://gitlab.com/gfwlist/gfwlist/raw/master/gfwlist.txt'
+    // ],
+    pacFilePath: './extra/pac/pac.txt'
   }
 }

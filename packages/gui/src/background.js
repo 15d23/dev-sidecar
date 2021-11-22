@@ -1,7 +1,7 @@
 'use strict'
 /* global __static */
 import path from 'path'
-import { app, protocol, BrowserWindow, Menu, Tray, ipcMain, dialog } from 'electron'
+import { app, protocol, BrowserWindow, Menu, Tray, ipcMain, dialog, powerMonitor, nativeImage, nativeTheme } from 'electron'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import backend from './bridge/backend'
 import DevSidecar from '@docmirror/dev-sidecar'
@@ -18,54 +18,76 @@ let win
 // eslint-disable-next-line no-unused-vars
 let tray // 防止被内存清理
 let forceClose = false
-
+DevSidecar.api.config.reload()
+let hideDockWhenWinClose = DevSidecar.api.config.get().app.dock.hideWhenWinClose || false
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { secure: true, standard: true } }
 ])
-
 // 隐藏主窗口，并创建托盘，绑定关闭事件
-function setTray (app) {
+function setTray () {
+  // const topMenu = Menu.buildFromTemplate({})
+  // Menu.setApplicationMenu(topMenu)
   // 用一个 Tray 来表示一个图标,这个图标处于正在运行的系统的通知区
   // 通常被添加到一个 context menu 上.
   // 系统托盘右键菜单
   const trayMenuTemplate = [
+
+    {
+      // 系统托盘图标目录
+      label: 'DevTools',
+      click: () => {
+        win.webContents.openDevTools()
+      }
+    },
     {
       // 系统托盘图标目录
       label: '退出',
       click: () => {
+        log.info('force quit')
         forceClose = true
-        quit(app)
+        quit()
       }
     }
   ]
   // 设置系统托盘图标
-  let icon = '128x128.png'
+  const iconRootPath = path.join(__dirname, '../extra/icons/tray')
+  let iconPath = path.join(iconRootPath, 'icon.png')
+  const iconWhitePath = path.join(iconRootPath, 'icon-white.png')
+  const iconBlackPath = path.join(iconRootPath, 'icon-black.png')
   if (isMac) {
-    icon = '16x16.png'
+    iconPath = nativeTheme.shouldUseDarkColors ? iconWhitePath : iconBlackPath
   }
-  const iconPath = path.join(__dirname, '../extra/icons/', icon)
-  const appTray = new Tray(iconPath)
+
+  const trayIcon = nativeImage.createFromPath(iconPath)
+  const appTray = new Tray(trayIcon)
+
+  // 当桌面主题更新时
+  if (isMac) {
+    nativeTheme.on('updated', () => {
+      console.log('i am changed')
+      if (nativeTheme.shouldUseDarkColors) {
+        console.log('i am dark.')
+        tray.setImage(iconWhitePath)
+      } else {
+        console.log('i am light.')
+        tray.setImage(iconBlackPath)
+        // tray.setPressedImage(iconWhitePath)
+      }
+    })
+  }
 
   // 图标的上下文菜单
   const contextMenu = Menu.buildFromTemplate(trayMenuTemplate)
 
   // 设置托盘悬浮提示
   appTray.setToolTip('DevSidecar-开发者边车辅助工具')
-
   // 单击托盘小图标显示应用
   appTray.on('click', () => {
     // 显示主程序
-    win.show()
+    showWin()
   })
 
-  // 设置托盘菜单
-  // appTray.setContextMenu(contextMenu)
-
-  // appTray.on('double-click', function () {
-  //   log.info('double click')
-  //   win.show()
-  // })
   appTray.on('right-click', function (event, bounds) {
     setTimeout(function () {
       appTray.popUpContextMenu(contextMenu)
@@ -75,16 +97,39 @@ function setTray (app) {
   return appTray
 }
 
-function createWindow () {
-  // Create the browser window.
+function isLinux () {
+  const platform = DevSidecar.api.shell.getSystemPlatform()
+  return platform === 'linux'
+}
 
-  let startHideWindow = false
-  if (process.argv) {
-    const args = minimist(process.argv)
-    if (args.hideWindow) {
-      startHideWindow = true
+function hideWin () {
+  if (win) {
+    if (isLinux()) {
+      quit(app)
+      return
+    }
+    win.hide()
+    if (isMac && hideDockWhenWinClose) {
+      app.dock.hide()
     }
   }
+}
+
+function showWin () {
+  if (win) {
+    win.show()
+  }
+  app.dock.show()
+}
+
+function changeAppConfig (config) {
+  if (config.hideDockWhenWinClose != null) {
+    hideDockWhenWinClose = config.hideDockWhenWinClose
+  }
+}
+
+function createWindow (startHideWindow) {
+  // Create the browser window.
 
   win = new BrowserWindow({
     width: 900,
@@ -92,6 +137,8 @@ function createWindow () {
     title: 'DevSidecar',
     webPreferences: {
       enableRemoteModule: true,
+      contextIsolation: false,
+      nativeWindowOpen: true, // ADD THIS
       // preload: path.join(__dirname, 'preload.js'),
       // Use pluginOptions.nodeIntegration, leave this alone
       // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
@@ -101,6 +148,9 @@ function createWindow () {
     // eslint-disable-next-line no-undef
     icon: path.join(__static, 'icon.png')
   })
+
+  Menu.setApplicationMenu(null)
+  win.setMenu(null)
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode
@@ -113,7 +163,7 @@ function createWindow () {
   }
 
   if (startHideWindow) {
-    win.hide()
+    hideWin()
   }
 
   win.on('closed', async (e) => {
@@ -124,15 +174,20 @@ function createWindow () {
   win.on('close', (e) => {
     if (!forceClose) {
       e.preventDefault()
-      win.hide()
+      hideWin()
     }
+  })
+
+  win.on('session-end', async (e) => {
+    log.info('session-end', e)
+    await quit()
   })
 }
 
 async function beforeQuit () {
   return DevSidecar.api.shutdown()
 }
-async function quit (app, callback) {
+async function quit () {
   if (tray) {
     tray.displayBalloon({ title: '正在关闭', content: '关闭中,请稍候。。。' })
   }
@@ -143,8 +198,7 @@ async function quit (app, callback) {
 
 // eslint-disable-next-line no-unused-vars
 function setDock () {
-  const { app } = require('electron')
-  if (process.platform === 'darwin') {
+  if (isMac) {
     app.whenReady().then(() => {
       app.dock.setIcon(path.join(__dirname, '../build/mac/512x512.png'))
     })
@@ -152,6 +206,21 @@ function setDock () {
 }
 // -------------执行开始---------------
 app.disableHardwareAcceleration() // 禁用gpu
+
+// 开启后是否默认隐藏window
+let startHideWindow = false
+if (process.argv) {
+  const args = minimist(process.argv)
+  if (args.hideWindow) {
+    startHideWindow = true
+  }
+
+  log.info('start args', args)
+}
+if (app.getLoginItemSettings().wasOpenedAsHidden) {
+  startHideWindow = true
+}
+log.info('start hide window', startHideWindow, app.getLoginItemSettings())
 
 // 禁止双开
 const isFirstInstance = app.requestSingleInstanceLock()
@@ -170,13 +239,14 @@ if (!isFirstInstance) {
   app.on('second-instance', (event, commandLine, workingDirectory) => {
     log.info('new app started', commandLine)
     if (win) {
-      win.show()
+      showWin()
       win.focus()
     }
   })
 
   // Quit when all windows are closed.
   app.on('window-all-closed', () => {
+    log.info('window-all-closed')
     // On macOS it is common for applications and their menu bar
     // to stay active until the user quits explicitly with Cmd + Q
     if (process.platform !== 'darwin') {
@@ -188,9 +258,9 @@ if (!isFirstInstance) {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
     if (win == null) {
-      createWindow()
+      createWindow(false)
     } else {
-      win.show()
+      showWin()
     }
   })
 
@@ -209,8 +279,8 @@ if (!isFirstInstance) {
       // }
     }
     try {
-      createWindow()
-      const context = { win, app, beforeQuit, quit, ipcMain, dialog, log, api: DevSidecar.api }
+      createWindow(startHideWindow)
+      const context = { win, app, beforeQuit, quit, ipcMain, dialog, log, api: DevSidecar.api, changeAppConfig }
       backend.install(context) // 模块安装
     } catch (err) {
       log.info('err', err)
@@ -218,10 +288,16 @@ if (!isFirstInstance) {
 
     try {
       // 最小化到托盘
-      tray = setTray(app)
+      tray = setTray()
     } catch (err) {
       log.info('err', err)
     }
+
+    powerMonitor.on('shutdown', async (e) => {
+      e.preventDefault()
+      log.info('系统关机，恢复代理设置')
+      await quit()
+    })
   })
 }
 
@@ -241,3 +317,8 @@ if (isDevelopment) {
     })
   }
 }
+// 系统关机和重启时的操作
+process.on('exit', function () {
+  log.info('进程结束，退出app')
+  quit()
+})
