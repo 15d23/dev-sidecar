@@ -35,9 +35,9 @@ const _lanIP = [
   '172.29.*',
   '172.30.*',
   '172.31.*',
-  '192.168.*',
-  '<-loopback>'
+  '192.168.*'
 ]
+//   '<-loopback>'
 
 async function _winUnsetProxy (exec, setEnv) {
   // eslint-disable-next-line no-constant-condition
@@ -68,11 +68,14 @@ async function _winSetProxy (exec, ip, port, setEnv) {
   for (const string of _lanIP) {
     lanIpStr += string + ';'
   }
+  // http=127.0.0.1:8888;https=127.0.0.1:8888 考虑这种方式
   const proxyPath = extraPath.getProxyExePath()
-  await execFile(proxyPath, ['global', `${ip}:${port}`, lanIpStr])
+  await execFile(proxyPath, ['global', `http=http://${ip}:${port};https=http://${ip}:${port}`, lanIpStr])
 
-  if (setEnv == null) {
+  if (setEnv) {
+    log.info('同时设置 https_proxy')
     try {
+      await exec('echo \'test\'')
       await exec('echo \'test\'')
       await exec(`setx HTTPS_PROXY "http://${ip}:${port}/"`)
       //  await addClearScriptIni()
@@ -94,7 +97,7 @@ const executor = {
     } else {
       // 设置代理
 
-      log.info('设置代理', ip, port)
+      log.info('设置代理', ip, port, setEnv)
       return _winSetProxy(exec, ip, port, setEnv)
     }
   },

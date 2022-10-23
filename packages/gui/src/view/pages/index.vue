@@ -19,14 +19,15 @@
     </template>
 
     <div class="box">
+      <a-alert v-if="config && config.app.showShutdownTip" message="本应用开启后会修改系统代理，直接重启电脑可能会无法上网，您可以再次启动本应用即可恢复。如您需要卸载，在卸载前请务必完全退出本应用再进行卸载" banner closable @close="onShutdownTipClose"/>
       <div class="mode-bar" style="margin:20px;" v-if="config && config.app">
         <a-radio-group v-model="config.app.mode" button-style="solid" @change="modeChange">
-          <a-tooltip placement="topLeft" title="启用测速，关闭拦截，关闭增强（功能最弱，不稳定，不需要安装证书，最安全）">
+          <a-tooltip placement="topLeft" title="启用测速，关闭拦截，关闭增强（不稳定，不需要安装证书，最安全）">
             <a-radio-button value="safe">
               安全模式
             </a-radio-button>
           </a-tooltip>
-          <a-tooltip placement="topLeft" title="启用测速，启用拦截，关闭增强（功能稍强，需要安装证书）">
+          <a-tooltip placement="topLeft" title="启用测速，启用拦截，关闭增强（需要安装证书）">
             <a-radio-button value="default">
               默认模式
             </a-radio-button>
@@ -102,7 +103,8 @@
       </div>
 
       <a-modal title="捐赠" v-model="donateModal" width="550px" cancelText="不了" okText="果断支持" @ok="goDonate">
-        <div>* 如果觉得好用，请给我一点鼓励，感谢。</div>
+        <div>* 本应用完全免费，如果觉得好用，可以给予捐赠。</div>
+        <div>* 开源项目持续发展离不开您的支持，感谢</div>
         <div class="payQrcode">
           <img height="200px" src="/pay.jpg"/>
         </div>
@@ -201,7 +203,7 @@ export default {
           return
         }
         this.config.server.intercept.enabled = true
-        this.config.server.dns.speedTest.enabled = false
+        this.config.server.dns.speedTest.enabled = true
         this.config.plugin.overwall.enabled = true
       }
       this.$api.config.save(this.config).then(() => {
@@ -335,6 +337,16 @@ export default {
     },
     openExternal (url) {
       this.$api.ipc.openExternal(url)
+    },
+    onShutdownTipClose (e) {
+      this.$confirm({
+        title: '是否永久关闭该提示',
+        okText: '我已知晓，不再提示',
+        cancelText: '下次还显示',
+        onOk: () => {
+          this.$api.config.update({ app: { showShutdownTip: false } })
+        }
+      })
     }
   }
 }

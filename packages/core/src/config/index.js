@@ -21,10 +21,13 @@ module.exports = {
     },
     dock: {
       hideWhenWinClose: false
-    }
+    },
+    closeStrategy: 0,
+    showShutdownTip: true
   },
   server: {
     enabled: true,
+    host: '127.0.0.1',
     port: 31181,
     setting: {
       NODE_TLS_REJECT_UNAUTHORIZED: true,
@@ -242,7 +245,8 @@ module.exports = {
         'gh.docmirror.top': 'quad9',
         '*v2ex.com': 'quad9',
         '*pypi.org': 'quad9',
-        '*jetbrains.com': 'quad9'
+        '*jetbrains.com': 'quad9',
+        '*azureedge.net': 'quad9'
       },
       speedTest: {
         enabled: true,
